@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.6.20"
+axum = { git = "https://github.com/tokio-rs/axum.git", rev = "52a90390195e884bcc12ff5bd9fd805cac806447" }
 nom = "7.1.1"
-tokio = { version = "1.30.0", default-features = false, features = ["rt", "rt-multi-thread"] }
+serde = { version = "1.0.183", features = ["derive"] }
+tokio = { version = "1.30.0", default-features = false, features = ["macros", "rt", "rt-multi-thread"] }
+tower-http = { version = "0.4.3", features = ["fs"] }
