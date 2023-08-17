@@ -1,6 +1,9 @@
+#![feature(exit_status_error)]
 use axum::{http::StatusCode, routing::post, Json, Router};
 use serde::Serialize;
 use tower_http::services::{ServeDir, ServeFile};
+
+mod parse;
 
 #[tokio::main]
 async fn main() {
