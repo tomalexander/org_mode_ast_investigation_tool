@@ -1,15 +1,12 @@
 use serde::Serialize;
 
-pub fn build_owner_tree<C>(file_contents: C) -> Result<OwnerTree, Box<dyn std::error::Error>>
-where
-    C: AsRef<str>,
-{
-    Ok(OwnerTree {
-        input_source: file_contents.as_ref().to_owned(),
-    })
+use crate::sexp::sexp_with_padding;
+
+pub fn build_owner_tree(file_contents: &str) -> Result<OwnerTree, Box<dyn std::error::Error + '_>> {
+    let (_remaining, parsed_sexp) = sexp_with_padding(file_contents)?;
+
+    Ok(OwnerTree {})
 }
 
 #[derive(Serialize)]
-pub struct OwnerTree {
-    input_source: String,
-}
+pub struct OwnerTree {}
