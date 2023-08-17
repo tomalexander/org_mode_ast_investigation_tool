@@ -1,6 +1,8 @@
-use std::process::Command;
+use tokio::process::Command;
 
-pub fn emacs_parse_org_document<C>(file_contents: C) -> Result<String, Box<dyn std::error::Error>>
+pub async fn emacs_parse_org_document<C>(
+    file_contents: C,
+) -> Result<String, Box<dyn std::error::Error>>
 where
     C: AsRef<str>,
 {
@@ -22,10 +24,10 @@ where
         .arg("--batch")
         .arg("--eval")
         .arg(elisp_script);
-    let out = proc.output()?;
+
+    let out = proc.output().await?;
     out.status.exit_ok()?;
-    let org_sexp = out.stderr;
-    Ok(String::from_utf8(org_sexp)?)
+    Ok(String::from_utf8(out.stderr)?)
 }
 
 fn escape_elisp_string<C>(file_contents: C) -> String

@@ -1,8 +1,10 @@
 #![feature(exit_status_error)]
 use axum::{http::StatusCode, routing::post, Json, Router};
+use parse::emacs_parse_org_document;
 use serde::Serialize;
 use tower_http::services::{ServeDir, ServeFile};
 
+mod owner_tree;
 mod parse;
 
 #[tokio::main]
@@ -16,9 +18,10 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn parse_org_mode(body: String) -> (StatusCode, Json<OwnerTree>) {
+async fn parse_org_mode(body: String) -> Result<(StatusCode, Json<OwnerTree>), (StatusCode, String)> {
+    let ast = emacs_parse_org_document(&body).await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
     let ret = OwnerTree { input_source: body };
-    (StatusCode::OK, Json(ret))
+    Ok((StatusCode::OK, Json(ret)))
 }
 
 #[derive(Serialize)]
