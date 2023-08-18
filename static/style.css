@@ -60,9 +60,16 @@ h7 {
 }
 
 .output_container > * {
-    flex: 1 0;
+    flex: 1 0 0;
+}
+
+.ast_tree {
+    padding: 5px;
 }
 
 .ast_node {
     background: #eeeeee;
+    margin-bottom: 5px;
+    border: 1px solid #000000;
+    padding: 2px;
 }

@@ -40,22 +40,23 @@ function renderSourceBox(response) {
 }
 
 function renderAstTree(response) {
-    for (let list of response.lists) {
-        renderAstList(response.input, 0, list);
-    }
+    renderAstNode(response.input, 0, response.tree);
 }
 
-function renderAstList(originalSource, depth, list) {
-    const listElem = document.createElement("div");
-    listElem.classList.add("ast_node");
+function renderAstNode(originalSource, depth, astNode) {
+    const nodeElem = document.createElement("div");
+    nodeElem.classList.add("ast_node");
 
-    let sourceForList = originalSource.slice(list.position.start_character - 1, list.position.end_character - 1);
+    let sourceForNode = originalSource.slice(astNode.position.start_character - 1, astNode.position.end_character - 1);
     // Since sourceForList is a string, JSON.stringify will escape with backslashes and wrap the text in quotation marks, ensuring that the string ends up on a single line. Coincidentally, this is the behavior we want.
-    let escapedSource = JSON.stringify(sourceForList);
+    let escapedSource = JSON.stringify(sourceForNode);
 
-    listElem.innerText = `List: ${escapedSource}`;
-    listElem.style.marginLeft = `${depth * 20}px`;
-    astTreeElement.appendChild(listElem);
+    nodeElem.innerText = `${astNode.name}: ${escapedSource}`;
+    nodeElem.style.marginLeft = `${depth * 20}px`;
+    astTreeElement.appendChild(nodeElem);
+    for (let child of astNode.children) {
+        renderAstNode(originalSource, depth + 1, child);
+    }
 }
 
 inputElement.addEventListener("input", async () => {
