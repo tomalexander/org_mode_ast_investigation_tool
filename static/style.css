@@ -35,6 +35,7 @@ h7 {
 .code_block > code {
     display: table;
     counter-increment: code_line_number;
+    min-height: 1.4em;
 }
 
 .code_block > code::before {
