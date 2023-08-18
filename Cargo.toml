@@ -8,4 +8,5 @@ axum = { git = "https://github.com/tokio-rs/axum.git", rev = "52a90390195e884bcc
 nom = "7.1.1"
 serde = { version = "1.0.183", features = ["derive"] }
 tokio = { version = "1.30.0", default-features = false, features = ["macros", "process", "rt", "rt-multi-thread"] }
-tower-http = { version = "0.4.3", features = ["fs"] }
+tower = "0.4.13"
+tower-http = { version = "0.4.3", features = ["fs", "set-header"] }

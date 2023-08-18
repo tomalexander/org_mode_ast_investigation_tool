@@ -394,6 +394,7 @@ dependencies = [
  "nom",
  "serde",
  "tokio",
+ "tower",
  "tower-http",
 ]
 
