@@ -1,6 +1,9 @@
 #![feature(exit_status_error)]
+use axum::http::header::CACHE_CONTROL;
+use axum::http::HeaderMap;
+use axum::response::IntoResponse;
 use axum::{http::StatusCode, routing::post, Json, Router};
-use owner_tree::{build_owner_tree, OwnerTree};
+use owner_tree::build_owner_tree;
 use parse::emacs_parse_org_document;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -20,18 +23,20 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn parse_org_mode(
-    body: String,
-) -> Result<(StatusCode, Json<OwnerTree>), (StatusCode, String)> {
+async fn parse_org_mode(body: String) -> Result<impl IntoResponse, (StatusCode, String)> {
     _parse_org_mode(body)
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))
 }
 
-async fn _parse_org_mode(
-    body: String,
-) -> Result<(StatusCode, Json<OwnerTree>), Box<dyn std::error::Error>> {
+async fn _parse_org_mode(body: String) -> Result<impl IntoResponse, Box<dyn std::error::Error>> {
     let ast = emacs_parse_org_document(&body).await?;
     let owner_tree = build_owner_tree(body.as_str(), ast.as_str()).map_err(|e| e.to_string())?;
     Ok((StatusCode::OK, Json(owner_tree)))
+}
+
+fn no_cache_headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(CACHE_CONTROL, "public, max-age=120".parse().unwrap());
+    headers
 }
