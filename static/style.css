@@ -62,3 +62,7 @@ h7 {
 .output_container > * {
     flex: 1 0;
 }
+
+.ast_node {
+    background: #eeeeee;
+}
