@@ -1,3 +1,28 @@
+h1, h2, h3, h4, h5, h6, h7 {
+    font-weight: 700;
+}
+h1 {
+    font-size: 28px;
+}
+h2 {
+    font-size: 24px;
+}
+h3 {
+    font-size: 22px;
+}
+h4 {
+    font-size: 20px;
+}
+h5 {
+    font-size: 18px;
+}
+h6 {
+    font-size: 18px;
+}
+h7 {
+    font-size: 18px;
+}
+
 .code_block {
     font: 14px/1.4 "Cascadia Mono", monospace;
     background: #272822ff;
@@ -5,8 +30,6 @@
     display: table;
     white-space: break-spaces;
     padding: 5px;
-
-    /* color for line numbers  */
 }
 
 .code_block > code {

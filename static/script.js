@@ -22,6 +22,7 @@ inputElement.addEventListener("input", async () => {
         inFlightRequest.abort();
         inFlightRequest = null;
     }
+    outputElement.innerHTML = "";
 
     let newRequest = abortableFetch("/parse", {
         method: "POST",
