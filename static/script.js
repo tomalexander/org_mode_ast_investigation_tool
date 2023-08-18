@@ -19,14 +19,11 @@ async function renderParseResponse(response) {
     const numLines = lines.length;
     const numDigits = Math.log10(numLines) + 1;
 
-    // outputElement.style.counterSet = "code_line_number 0;";
-    outputElement.style.paddingLeft = `calc(${numDigits + 1}ch + 10px);`;
+    outputElement.style.paddingLeft = `calc(${numDigits + 1}ch + 10px)`;
 
-    // TODO: Do I need to set counter-set?
-    console.log(lines);
     for (let line of lines) {
         let wrappedLine = document.createElement("code");
-        wrappedLine.textContent = line;
+        wrappedLine.textContent = line ? line : "\n";
         outputElement.appendChild(wrappedLine);
     }
 }
