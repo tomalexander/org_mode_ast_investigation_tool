@@ -1,3 +1,4 @@
+<!doctype html>
 <html>
   <head>
     <link rel="stylesheet" href="reset.css">
@@ -8,6 +9,13 @@
     <h2>Input org-mode source:</h2>
     <textarea id="org-input" rows="24" cols="80"></textarea>
     <hr/>
-    <div id="parse-output" class="code_block" style="counter-set: code_line_number 0;"></div>
+    <div class="output_container">
+      <div>
+        <div id="parse-output" class="code_block" style="counter-set: code_line_number 0;"></div>
+      </div>
+      <div>
+        tree goes here
+      </div>
+    </div>
   </body>
 </html>

@@ -43,7 +43,13 @@ inputElement.addEventListener("input", async () => {
     });
     inFlightRequest = newRequest;
 
-    let response = await inFlightRequest.ready;
+    let response = null;
+    try {
+        response = await inFlightRequest.ready;
+    }
+    catch (err) {
+        if (err.name === "AbortError") return;
+    }
     renderParseResponse(await response.json());
 });
 
