@@ -7,12 +7,13 @@ pub fn build_owner_tree<'a>(
     ast_raw: &'a str,
 ) -> Result<OwnerTree, Box<dyn std::error::Error + 'a>> {
     let (_remaining, parsed_sexp) = sexp_with_padding(ast_raw)?;
-    let lists = find_lists_in_document(body, &parsed_sexp)?;
+    assert_name(&parsed_sexp, "org-data")?;
+    let ast_node = build_ast_node(body, None, &parsed_sexp)?;
 
     Ok(OwnerTree {
         input: body.to_owned(),
         ast: ast_raw.to_owned(),
-        lists,
+        tree: ast_node,
     })
 }
 
@@ -20,7 +21,14 @@ pub fn build_owner_tree<'a>(
 pub struct OwnerTree {
     input: String,
     ast: String,
-    lists: Vec<PlainList>,
+    tree: AstNode,
+}
+
+#[derive(Serialize)]
+pub struct AstNode {
+    name: String,
+    position: SourceRange,
+    children: Vec<AstNode>,
 }
 
 #[derive(Serialize)]
@@ -43,102 +51,64 @@ pub struct SourceRange {
     end_character: u32, // Exclusive
 }
 
-fn find_lists_in_document<'a>(
+fn build_ast_node<'a>(
     original_source: &str,
+    parent_range: Option<&SourceRange>,
     current_token: &Token<'a>,
-) -> Result<Vec<PlainList>, Box<dyn std::error::Error>> {
-    // DFS looking for top-level lists
-
-    let mut found_lists = Vec::new();
-    let children = current_token.as_list()?;
-    let token_name = "org-data";
-    assert_name(current_token, token_name)?;
-
-    // skip 2 to skip token name and standard properties
-    for child_token in children.iter().skip(2) {
-        found_lists.extend(recurse_token(original_source, child_token)?);
-    }
-
-    Ok(found_lists)
-}
-
-fn recurse_token<'a>(
-    original_source: &str,
-    current_token: &Token<'a>,
-) -> Result<Vec<PlainList>, Box<dyn std::error::Error>> {
-    match current_token {
-        Token::Atom(_) | Token::TextWithProperties(_) => Ok(Vec::new()),
-        Token::List(_) => {
-            let new_lists = find_lists_in_list(original_source, current_token)?;
-            Ok(new_lists)
+) -> Result<AstNode, Box<dyn std::error::Error>> {
+    let maybe_plain_text = current_token.as_text();
+    let ast_node = match maybe_plain_text {
+        Ok(plain_text) => {
+            let parent_range =
+                parent_range.ok_or("parent_range should be set for all plain text nodes.")?;
+            let parameters = &plain_text.properties;
+            let begin = parent_range.start_character
+                + parameters
+                    .get(0)
+                    .ok_or("Missing first element past the text.")?
+                    .as_atom()?
+                    .parse::<u32>()?;
+            let end = parent_range.start_character
+                + parameters
+                    .get(1)
+                    .ok_or("Missing second element past the text.")?
+                    .as_atom()?
+                    .parse::<u32>()?;
+            let (start_line, end_line) = get_line_numbers(original_source, begin, end)?;
+            AstNode {
+                name: "plain-text".to_owned(),
+                position: SourceRange {
+                    start_line,
+                    end_line,
+                    start_character: begin,
+                    end_character: end,
+                },
+                children: Vec::new(),
+            }
         }
-        Token::Vector(_) => {
-            let new_lists = find_lists_in_vector(original_source, current_token)?;
-            Ok(new_lists)
+        Err(_) => {
+            // Not plain text, so it must be a list
+            let parameters = current_token.as_list()?;
+            let name = parameters
+                .first()
+                .ok_or("Should have at least one child.")?
+                .as_atom()?;
+            let position = get_bounds(original_source, current_token)?;
+            let children: Result<Vec<_>, _> = parameters
+                .iter()
+                .skip(2)
+                .map(|param| build_ast_node(original_source, Some(&position), param))
+                .collect();
+
+            AstNode {
+                name: name.to_owned(),
+                position,
+                children: children?,
+            }
         }
-    }
-}
+    };
 
-fn find_lists_in_list<'a>(
-    original_source: &str,
-    current_token: &Token<'a>,
-) -> Result<Vec<PlainList>, Box<dyn std::error::Error>> {
-    let mut found_lists = Vec::new();
-    let children = current_token.as_list()?;
-    if assert_name(current_token, "plain-list").is_ok() {
-        // Found a list!
-        let mut found_items = Vec::new();
-        // skip 2 to skip token name and standard properties
-        for child_token in children.iter().skip(2) {
-            found_items.push(get_item_in_list(original_source, child_token)?);
-        }
-
-        found_lists.push(PlainList {
-            position: get_bounds(original_source, current_token)?,
-            items: found_items,
-        });
-    } else {
-        // skip 2 to skip token name and standard properties
-        for child_token in children.iter().skip(2) {
-            found_lists.extend(recurse_token(original_source, child_token)?);
-        }
-    }
-
-    Ok(found_lists)
-}
-
-fn find_lists_in_vector<'a>(
-    original_source: &str,
-    current_token: &Token<'a>,
-) -> Result<Vec<PlainList>, Box<dyn std::error::Error>> {
-    let mut found_lists = Vec::new();
-    let children = current_token.as_vector()?;
-
-    for child_token in children.iter() {
-        found_lists.extend(recurse_token(original_source, child_token)?);
-    }
-
-    Ok(found_lists)
-}
-
-fn get_item_in_list<'a>(
-    original_source: &str,
-    current_token: &Token<'a>,
-) -> Result<PlainListItem, Box<dyn std::error::Error>> {
-    let mut found_lists = Vec::new();
-    let children = current_token.as_list()?;
-    let token_name = "item";
-    assert_name(current_token, token_name)?;
-
-    // skip 2 to skip token name and standard properties
-    for child_token in children.iter().skip(2) {
-        found_lists.extend(recurse_token(original_source, child_token)?);
-    }
-
-    Ok(PlainListItem {
-        position: get_bounds(original_source, current_token)?,
-        lists: found_lists,
-    })
+    Ok(ast_node)
 }
 
 fn assert_name<'s>(emacs: &'s Token<'s>, name: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -194,6 +164,20 @@ fn get_bounds<'s>(
     };
     let begin = begin.parse::<u32>()?;
     let end = end.parse::<u32>()?;
+    let (start_line, end_line) = get_line_numbers(original_source, begin, end)?;
+    Ok(SourceRange {
+        start_line,
+        end_line,
+        start_character: begin,
+        end_character: end,
+    })
+}
+
+fn get_line_numbers<'s>(
+    original_source: &'s str,
+    begin: u32,
+    end: u32,
+) -> Result<(u32, u32), Box<dyn std::error::Error>> {
     let start_line = original_source
         .chars()
         .into_iter()
@@ -208,10 +192,5 @@ fn get_bounds<'s>(
         .filter(|x| *x == '\n')
         .count()
         + 1;
-    Ok(SourceRange {
-        start_line: u32::try_from(start_line)?,
-        end_line: u32::try_from(end_line)?,
-        start_character: begin,
-        end_character: end,
-    })
+    Ok((u32::try_from(start_line)?, u32::try_from(end_line)?))
 }
