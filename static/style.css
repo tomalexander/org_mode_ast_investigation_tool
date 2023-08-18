@@ -1,0 +1,32 @@
+.code_block {
+    font: 14px/1.4 "Cascadia Mono", monospace;
+    background: #272822ff;
+    color: #f8f8f2ff;
+    display: table;
+    white-space: break-spaces;
+    padding: 5px;
+
+    /* color for line numbers  */
+}
+
+.code_block > code {
+    display: table;
+    counter-increment: code_line_number;
+}
+
+.code_block > code::before {
+    content: counter(code_line_number) " ";
+    display: inline-block;
+    position: absolute;
+    transform: TranslateX(-100%);
+    padding-right: 5px;
+    color: #eeeeee;
+}
+
+.code_block > code.highlighted {
+    background: #307351ff;
+}
+
+.code_block > code.highlighted::before {
+    background: #307351ff;
+}
