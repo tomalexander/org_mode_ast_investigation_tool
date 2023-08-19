@@ -53,22 +53,22 @@ pub struct SourceRange {
 
 fn build_ast_node<'a>(
     original_source: &str,
-    parent_range: Option<&SourceRange>,
+    parent_contents_begin: Option<u32>,
     current_token: &Token<'a>,
 ) -> Result<AstNode, Box<dyn std::error::Error>> {
     let maybe_plain_text = current_token.as_text();
     let ast_node = match maybe_plain_text {
         Ok(plain_text) => {
-            let parent_range =
-                parent_range.ok_or("parent_range should be set for all plain text nodes.")?;
+            let parent_contents_begin = parent_contents_begin
+                .ok_or("parent_contents_begin should be set for all plain text nodes.")?;
             let parameters = &plain_text.properties;
-            let begin = parent_range.start_character
+            let begin = parent_contents_begin
                 + parameters
                     .get(0)
                     .ok_or("Missing first element past the text.")?
                     .as_atom()?
                     .parse::<u32>()?;
-            let end = parent_range.start_character
+            let end = parent_contents_begin
                 + parameters
                     .get(1)
                     .ok_or("Missing second element past the text.")?
@@ -94,16 +94,18 @@ fn build_ast_node<'a>(
                 .ok_or("Should have at least one child.")?
                 .as_atom()?;
             let position = get_bounds(original_source, current_token)?;
-            let children: Result<Vec<_>, _> = parameters
-                .iter()
-                .skip(2)
-                .map(|param| build_ast_node(original_source, Some(&position), param))
-                .collect();
+            let mut children = Vec::new();
+            let mut contents_begin = get_contents_begin(current_token)?;
+            for child in parameters.into_iter().skip(2) {
+                let new_ast_node = build_ast_node(original_source, Some(contents_begin), child)?;
+                contents_begin = new_ast_node.position.end_character;
+                children.push(new_ast_node);
+            }
 
             AstNode {
                 name: name.to_owned(),
                 position,
-                children: children?,
+                children,
             }
         }
     };
@@ -171,6 +173,33 @@ fn get_bounds<'s>(
         start_character: begin,
         end_character: end,
     })
+}
+
+fn get_contents_begin<'s>(emacs: &'s Token<'s>) -> Result<u32, Box<dyn std::error::Error>> {
+    let children = emacs.as_list()?;
+    let attributes_child = children
+        .iter()
+        .nth(1)
+        .ok_or("Should have an attributes child.")?;
+    let attributes_map = attributes_child.as_map()?;
+    let standard_properties = attributes_map.get(":standard-properties");
+    let contents_begin = if standard_properties.is_some() {
+        let std_props = standard_properties
+            .expect("if statement proves its Some")
+            .as_vector()?;
+        let contents_begin = std_props
+            .get(2)
+            .ok_or("Missing third element in standard properties")?
+            .as_atom()?;
+        contents_begin
+    } else {
+        let contents_begin = attributes_map
+            .get(":contents-begin")
+            .ok_or("Missing :contents-begin attribute.")?
+            .as_atom()?;
+        contents_begin
+    };
+    Ok(contents_begin.parse::<u32>()?)
 }
 
 fn get_line_numbers<'s>(
