@@ -1,0 +1,130 @@
+* Test 1
+** Source
+#+begin_src org
+  1. foo
+
+     1. bar
+
+     2. baz
+
+  2. lorem
+
+  ipsum
+#+end_src
+** Ownership
+This table is just showing ownership for the plain list items, not the containing plain list nor the elements inside each item.
+
+| Plain List *Item*      | Owns trailing blank lines |
+|------------------------+---------------------------|
+| foo (includes bar baz) | Yes                       |
+| bar                    | Yes                       |
+| baz                    | Yes                       |
+| lorem                  | No                        |
+** Analysis
+In this test case, we see that the only list item that doesn't own its trailing blank lines is "lorem", the final list item of the outer-most list.
+* Test 2
+We add "cat" as a paragraph at the end of foo which makes "baz" lose its trailing blank lines.
+** Source
+#+begin_src org
+  1. foo
+
+     1. bar
+
+     2. baz
+
+     cat
+
+  2. lorem
+
+  ipsum
+#+end_src
+** Ownership
+| Plain List *Item*             | Owns trailing blank lines |
+|-------------------------------+---------------------------|
+| foo -> cat (includes bar baz) | Yes                       |
+| bar                           | Yes                       |
+| baz                           | No                        |
+| lorem                         | No                        |
+** Analysis
+In isolation, this implies that the final plain list item does not own its trailing blank lines, which conflicts with "baz" from test 1.
+
+New theory: List items own their trailing blank lines unless they are both the final list item and not the final element of a list item.
+
+| Plain List *Item*             | Owns trailing blank lines | Why                                                       |
+|-------------------------------+---------------------------+-----------------------------------------------------------|
+| foo -> cat (includes bar baz) | Yes                       | Not the final list item                                   |
+| bar                           | Yes                       | Not the final list item                                   |
+| baz                           | No                        | Final item of bar->baz and not the final element of "foo" |
+| lorem                         | No                        | Final item of foo->lorem and not contained in a list item |
+* Test 3
+So if that theory is true, taking the entire (foo -> lorem) list from test 1 and nesting it inside a list should coerce "lorem" to own its trailing blank lines since it would then be a final list item (of foo -> lorem) and the final element of the new list.
+** Source
+#+begin_src org
+  1. cat
+     1. foo
+
+        1. bar
+
+        2. baz
+
+     2. lorem
+
+  ipsum
+#+end_src
+** Ownership
+| Plain List *Item*           | Owns trailing blank lines |
+|-----------------------------+---------------------------|
+| cat (includes foo -> lorem) | No                        |
+| foo (includes bar baz)      | Yes                       |
+| bar                         | Yes                       |
+| baz                         | Yes                       |
+| lorem                       | No                        |
+** Analysis
+Against expectations, we did not coerce lorem to consume its trailing blank lines. What is different between "baz" and "lorem"? Well, "baz" is contained within "foo" which has a "lorem" after it, whereas "lorem" is contained within "cat" which does not have any list items after it.
+
+New theory: List items own their trailing blank lines unless they are both the final list item and not the final element of a non-final list item.
+| Plain List *Item*           | Owns trailing blank lines | Why                                                  |
+|-----------------------------+---------------------------+------------------------------------------------------|
+| cat (includes foo -> lorem) | No                        | Final list item and not contained in a list item     |
+| foo (includes bar baz)      | Yes                       | Not the final list item                              |
+| bar                         | Yes                       | Not the final list item                              |
+| baz                         | Yes                       | Final element of non-final list item                 |
+| lorem                       | No                        | Final list item and final element of final list item |
+* Test 4
+So if that theory is true, then we should be able to coerce lorem to consume its trailing blank lines by adding a second item to the cat list.
+** Source
+#+begin_src org
+  1. cat
+     1. foo
+
+        1. bar
+
+        2. baz
+
+     2. lorem
+
+  2. dog
+
+  ipsum
+#+end_src
+** Ownership
+| Plain List *Item*           | Owns trailing blank lines |
+|-----------------------------+---------------------------|
+| cat (includes foo -> lorem) | Yes                       |
+| foo (includes bar baz)      | Yes                       |
+| bar                         | Yes                       |
+| baz                         | Yes                       |
+| lorem                       | Yes                       |
+| dog                         | No                        |
+** Analysis
+For the first time our expectations were met!
+
+Enduring theory: List items own their trailing blank lines unless they are both the final list item and not the final element of a non-final list item.
+| Plain List *Item*           | Owns trailing blank lines | Why                                              |
+|-----------------------------+---------------------------+--------------------------------------------------|
+| cat (includes foo -> lorem) | Yes                       | Not the final list item                          |
+| foo (includes bar baz)      | Yes                       | Not the final list item                          |
+| bar                         | Yes                       | Not the final list item                          |
+| baz                         | Yes                       | Final element of non-final list item             |
+| lorem                       | Yes                       | Final element of non-final list item             |
+| dog                         | No                        | Final list item and not contained in a list item |
