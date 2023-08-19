@@ -21,7 +21,6 @@ function clearOutput() {
 
 function renderParseResponse(response) {
     clearOutput();
-    console.log(response);
     renderSourceBox(response);
     renderAstTree(response);
 }
