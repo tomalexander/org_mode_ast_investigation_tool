@@ -59,7 +59,7 @@ function renderAstNode(originalSource, depth, astNode) {
     const nodeElem = document.createElement("div");
     nodeElem.classList.add("ast_node");
 
-    let sourceForNode = originalSource.slice(astNode.position.start_character - 1, astNode.position.end_character - 1);
+    let sourceForNode = unicodeAwareSlice(originalSource, astNode.position.start_character - 1, astNode.position.end_character - 1);
     // Since sourceForList is a string, JSON.stringify will escape with backslashes and wrap the text in quotation marks, ensuring that the string ends up on a single line. Coincidentally, this is the behavior we want.
     let escapedSource = JSON.stringify(sourceForNode);
 
@@ -137,14 +137,14 @@ function highlightLine(htmlName, lineOffset) {
 }
 
 function highlightCharacters(htmlName, originalSource, startCharacter, endCharacter) {
-    let sourceBefore = originalSource.slice(0, startCharacter - 1);
-    let precedingLineBreak = sourceBefore.lastIndexOf("\n");
+    let sourceBefore = unicodeAwareSlice(originalSource, 0, startCharacter - 1);
+    let precedingLineBreak = unicodeAwareLastIndexOfCharacter(sourceBefore, "\n");
     let characterIndexOnLine = precedingLineBreak !== -1 ? startCharacter - precedingLineBreak - 1 : startCharacter;
     let lineNumber = (sourceBefore.match(/\r?\n/g) || '').length + 1;
 
     for (let characterIndex = startCharacter; characterIndex < endCharacter; ++characterIndex) {
         document.querySelector(`#${htmlName} > code:nth-child(${lineNumber}) > span:nth-child(${characterIndexOnLine})`)?.classList.add("highlighted");
-        if (originalSource[characterIndex - 1] == "\n") {
+        if (unicodeAwareCharAtOffset(originalSource, characterIndex - 1) == "\n") {
             ++lineNumber;
             characterIndexOnLine = 1;
         } else {
@@ -152,4 +152,44 @@ function highlightCharacters(htmlName, originalSource, startCharacter, endCharac
         }
     }
 
+}
+
+function unicodeAwareSlice(text, start, end) {
+    // Boooo javascript
+    let i = 0;
+    let output = "";
+    for (chr of text) {
+        if (i >= end) {
+            break;
+        }
+        if (i >= start) {
+            output += chr;
+        }
+        ++i;
+    }
+    return output;
+}
+
+function unicodeAwareLastIndexOfCharacter(haystack, needle) {
+    // Boooo javascript
+    let i = 0;
+    let found = -1;
+    for (chr of haystack) {
+        if (chr == needle) {
+            found = i;
+        }
+        ++i;
+    }
+    return found;
+}
+
+function unicodeAwareCharAtOffset(text, offset) {
+    // Boooo javascript
+    let i = offset;
+    for (chr of text) {
+        if (i == 0) {
+            return chr;
+        }
+        --i;
+    }
 }
