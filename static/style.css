@@ -47,10 +47,15 @@ h7 {
 }
 
 .code_block > code.highlighted {
-    background: #307351ff;
+    /* We aren't using this because we are going to highlight individual characters, but we still need to set the highlighted class on the code elem so the line numbers on the left get highlighted to make empty lines more obvious. */
+    /* background: #307351ff; */
 }
 
 .code_block > code.highlighted::before {
+    background: #307351ff;
+}
+
+.code_block > code > span.highlighted {
     background: #307351ff;
 }
 
@@ -68,8 +73,14 @@ h7 {
 }
 
 .ast_node {
+    cursor: pointer;
     background: #eeeeee;
     margin-bottom: 5px;
     border: 1px solid #000000;
     padding: 2px;
+}
+
+.ast_node.highlighted {
+    background: #307351ff;
+    color: #ffffff;
 }
