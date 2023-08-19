@@ -15,7 +15,7 @@ make --directory=docker
 
 Next we need to launch the server:
 ```bash
-docker run --rm --publish 127.0.0.1:3000:3000/tcp org-investigation
+docker run --rm --publish 3000:3000/tcp org-investigation
 ```
 
 This launches a server listening on port 3000, so pop open your browser to http://127.0.0.1:3000/ to access the web interface.

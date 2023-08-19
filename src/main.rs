@@ -32,6 +32,7 @@ async fn main() {
         .fallback_service(static_files_service);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    println!("Listening on port 3000. Pop open your browser to http://127.0.0.1:3000/ .");
     axum::serve(listener, app).await.unwrap();
 }
 
