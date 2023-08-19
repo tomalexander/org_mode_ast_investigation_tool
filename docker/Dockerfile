@@ -15,7 +15,7 @@ RUN make DESTDIR="/root/dist" install
 FROM build AS build-org-mode
 COPY --from=build-emacs /root/dist/ /
 RUN mkdir /root/dist
-RUN mkdir /root/org-mode && git -C /root/org-mode init --initial-branch=main && git -C /root/org-mode remote add origin https://git.savannah.gnu.org/git/emacs/org-mode.git && git -C /root/org-mode fetch origin cc435cba71a99ee7b12676be3b6e1211a9cb7285 && git -C /root/org-mode checkout FETCH_HEAD
+RUN mkdir /root/org-mode && git -C /root/org-mode init --initial-branch=main && git -C /root/org-mode remote add origin https://git.savannah.gnu.org/git/emacs/org-mode.git && git -C /root/org-mode fetch origin 3cbd9f423385bf725dc964a5cff573bba17db3ff && git -C /root/org-mode checkout FETCH_HEAD
 WORKDIR /root/org-mode
 RUN make compile
 RUN make DESTDIR="/root/dist" install
