@@ -12,6 +12,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 mod error;
 mod owner_tree;
 mod parse;
+mod rtrim_iterator;
 mod sexp;
 
 #[tokio::main]

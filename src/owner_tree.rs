@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use crate::sexp::{sexp_with_padding, Token};
+use crate::{
+    rtrim_iterator::RTrimIterator,
+    sexp::{sexp_with_padding, Token},
+};
 
 pub fn build_owner_tree<'a>(
     body: &'a str,
@@ -207,6 +210,7 @@ fn get_line_numbers<'s>(
     begin: u32,
     end: u32,
 ) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+    // This is used for highlighting which lines contain text relevant to the token, so even if a token does not extend all the way to the end of the line, the end_line figure will be the following line number (since the range is exclusive, not inclusive).
     let start_line = original_source
         .chars()
         .into_iter()
@@ -214,12 +218,15 @@ fn get_line_numbers<'s>(
         .filter(|x| *x == '\n')
         .count()
         + 1;
-    let end_line = original_source
-        .chars()
-        .into_iter()
-        .take(usize::try_from(end)? - 1)
-        .filter(|x| *x == '\n')
-        .count()
-        + 1;
+    let end_line = {
+        let content_up_to_and_including_token = original_source
+            .chars()
+            .into_iter()
+            .take(usize::try_from(end)? - 1);
+        // Remove the trailing newline (if there is one) because we're going to add an extra line regardless of whether or not this ends with a new line.
+        let without_trailing_newline = RTrimIterator::new(content_up_to_and_including_token, '\n');
+        without_trailing_newline.filter(|x| *x == '\n').count() + 2
+    };
+
     Ok((u32::try_from(start_line)?, u32::try_from(end_line)?))
 }
