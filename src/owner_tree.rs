@@ -98,12 +98,25 @@ fn build_ast_node<'a>(
                 .as_atom()?;
             let position = get_bounds(original_source, current_token)?;
             let mut children = Vec::new();
-            let mut contents_begin = get_contents_begin(current_token)?;
-            for child in parameters.into_iter().skip(2) {
-                let new_ast_node = build_ast_node(original_source, Some(contents_begin), child)?;
-                contents_begin = new_ast_node.position.end_character;
-                children.push(new_ast_node);
-            }
+            let original_contents_begin = get_contents_begin(current_token);
+            match original_contents_begin {
+                Ok(original_contents_begin) => {
+                    let mut contents_begin = original_contents_begin;
+                    for child in parameters.into_iter().skip(2) {
+                        let new_ast_node =
+                            build_ast_node(original_source, Some(contents_begin), child)?;
+                        contents_begin = new_ast_node.position.end_character;
+                        children.push(new_ast_node);
+                    }
+                }
+                Err(_) => {
+                    // Some nodes don't have a contents begin, so hopefully plain text can't be inside them.
+                    for child in parameters.into_iter().skip(2) {
+                        let new_ast_node = build_ast_node(original_source, None, child)?;
+                        children.push(new_ast_node);
+                    }
+                }
+            };
 
             AstNode {
                 name: name.to_owned(),
