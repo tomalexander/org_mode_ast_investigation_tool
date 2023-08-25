@@ -3,7 +3,8 @@ RUN apk add --no-cache build-base musl-dev git autoconf make texinfo gnutls-dev 
 
 
 FROM build AS build-emacs
-RUN git clone --depth 1 --branch emacs-29.1 https://git.savannah.gnu.org/git/emacs.git /root/emacs
+ARG EMACS_VERSION=emacs-29.1
+RUN git clone --depth 1 --branch $EMACS_VERSION https://git.savannah.gnu.org/git/emacs.git /root/emacs
 WORKDIR /root/emacs
 RUN mkdir /root/dist
 RUN ./autogen.sh
@@ -13,9 +14,12 @@ RUN make DESTDIR="/root/dist" install
 
 
 FROM build AS build-org-mode
+ARG ORG_VERSION=3cbd9f423385bf725dc964a5cff573bba17db3ff
 COPY --from=build-emacs /root/dist/ /
 RUN mkdir /root/dist
-RUN mkdir /root/org-mode && git -C /root/org-mode init --initial-branch=main && git -C /root/org-mode remote add origin https://git.savannah.gnu.org/git/emacs/org-mode.git && git -C /root/org-mode fetch origin 3cbd9f423385bf725dc964a5cff573bba17db3ff && git -C /root/org-mode checkout FETCH_HEAD
+# Savannah does not allow fetching specific revisions, so we're going to have to put unnecessary load on their server by cloning main and then checking out the revision we want.
+RUN git clone https://git.savannah.gnu.org/git/emacs/org-mode.git /root/org-mode && git -C /root/org-mode checkout $ORG_VERSION
+# RUN mkdir /root/org-mode && git -C /root/org-mode init --initial-branch=main && git -C /root/org-mode remote add origin https://git.savannah.gnu.org/git/emacs/org-mode.git && git -C /root/org-mode fetch origin $ORG_VERSION && git -C /root/org-mode checkout FETCH_HEAD
 WORKDIR /root/org-mode
 RUN make compile
 RUN make DESTDIR="/root/dist" install
