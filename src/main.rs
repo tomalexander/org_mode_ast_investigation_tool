@@ -34,10 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/parse", post(parse_org_mode))
         .fallback_service(static_files_service);
 
-    let emacs_version = get_emacs_version().await?;
-    let org_mode_version = get_org_mode_version().await?;
-    println!("Using emacs version: {}", emacs_version.trim());
-    println!("Using org-mode version: {}", org_mode_version.trim());
+    let (emacs_version, org_mode_version) =
+        tokio::join!(get_emacs_version(), get_org_mode_version());
+    println!("Using emacs version: {}", emacs_version?.trim());
+    println!("Using org-mode version: {}", org_mode_version?.trim());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     println!("Listening on port 3000. Pop open your browser to http://127.0.0.1:3000/ .");

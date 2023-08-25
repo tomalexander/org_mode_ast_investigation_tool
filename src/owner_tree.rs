@@ -48,15 +48,15 @@ pub struct PlainListItem {
 
 #[derive(Serialize)]
 pub struct SourceRange {
-    start_line: u32,
-    end_line: u32, // Exclusive
-    start_character: u32,
-    end_character: u32, // Exclusive
+    start_line: usize,
+    end_line: usize, // Exclusive
+    start_character: usize,
+    end_character: usize, // Exclusive
 }
 
 fn build_ast_node<'a>(
     original_source: &str,
-    parent_contents_begin: Option<u32>,
+    parent_contents_begin: Option<usize>,
     current_token: &Token<'a>,
 ) -> Result<AstNode, Box<dyn std::error::Error>> {
     let maybe_plain_text = current_token.as_text();
@@ -64,19 +64,13 @@ fn build_ast_node<'a>(
         Ok(plain_text) => {
             let parent_contents_begin = parent_contents_begin
                 .ok_or("parent_contents_begin should be set for all plain text nodes.")?;
-            let parameters = &plain_text.properties;
+            let mut parameters = plain_text.properties.iter();
             let begin = parent_contents_begin
-                + parameters
-                    .get(0)
-                    .ok_or("Missing first element past the text.")?
-                    .as_atom()?
-                    .parse::<u32>()?;
+                + maybe_token_to_usize(parameters.next())?
+                    .ok_or("Missing first element past the text.")?;
             let end = parent_contents_begin
-                + parameters
-                    .get(1)
-                    .ok_or("Missing second element past the text.")?
-                    .as_atom()?
-                    .parse::<u32>()?;
+                + maybe_token_to_usize(parameters.next())?
+                    .ok_or("Missing second element past the text.")?;
             let (start_line, end_line) = get_line_numbers(original_source, begin, end)?;
             AstNode {
                 name: "plain-text".to_owned(),
@@ -149,39 +143,13 @@ fn get_bounds<'s>(
     original_source: &'s str,
     emacs: &'s Token<'s>,
 ) -> Result<SourceRange, Box<dyn std::error::Error>> {
-    let children = emacs.as_list()?;
-    let attributes_child = children
-        .iter()
-        .nth(1)
-        .ok_or("Should have an attributes child.")?;
-    let attributes_map = attributes_child.as_map()?;
-    let standard_properties = attributes_map.get(":standard-properties");
-    let (begin, end) = if standard_properties.is_some() {
-        let std_props = standard_properties
-            .expect("if statement proves its Some")
-            .as_vector()?;
-        let begin = std_props
-            .get(0)
-            .ok_or("Missing first element in standard properties")?
-            .as_atom()?;
-        let end = std_props
-            .get(1)
-            .ok_or("Missing first element in standard properties")?
-            .as_atom()?;
-        (begin, end)
-    } else {
-        let begin = attributes_map
-            .get(":begin")
-            .ok_or("Missing :begin attribute.")?
-            .as_atom()?;
-        let end = attributes_map
-            .get(":end")
-            .ok_or("Missing :end attribute.")?
-            .as_atom()?;
-        (begin, end)
-    };
-    let begin = begin.parse::<u32>()?;
-    let end = end.parse::<u32>()?;
+    let standard_properties = get_standard_properties(emacs)?;
+    let (begin, end) = (
+        standard_properties
+            .begin
+            .ok_or("Token should have a begin.")?,
+        standard_properties.end.ok_or("Token should have an end.")?,
+    );
     let (start_line, end_line) = get_line_numbers(original_source, begin, end)?;
     Ok(SourceRange {
         start_line,
@@ -191,38 +159,18 @@ fn get_bounds<'s>(
     })
 }
 
-fn get_contents_begin<'s>(emacs: &'s Token<'s>) -> Result<u32, Box<dyn std::error::Error>> {
-    let children = emacs.as_list()?;
-    let attributes_child = children
-        .iter()
-        .nth(1)
-        .ok_or("Should have an attributes child.")?;
-    let attributes_map = attributes_child.as_map()?;
-    let standard_properties = attributes_map.get(":standard-properties");
-    let contents_begin = if standard_properties.is_some() {
-        let std_props = standard_properties
-            .expect("if statement proves its Some")
-            .as_vector()?;
-        let contents_begin = std_props
-            .get(2)
-            .ok_or("Missing third element in standard properties")?
-            .as_atom()?;
-        contents_begin
-    } else {
-        let contents_begin = attributes_map
-            .get(":contents-begin")
-            .ok_or("Missing :contents-begin attribute.")?
-            .as_atom()?;
-        contents_begin
-    };
-    Ok(contents_begin.parse::<u32>()?)
+fn get_contents_begin<'s>(emacs: &'s Token<'s>) -> Result<usize, Box<dyn std::error::Error>> {
+    let standard_properties = get_standard_properties(emacs)?;
+    Ok(standard_properties
+        .contents_begin
+        .ok_or("Token should have a contents-begin.")?)
 }
 
 fn get_line_numbers<'s>(
     original_source: &'s str,
-    begin: u32,
-    end: u32,
-) -> Result<(u32, u32), Box<dyn std::error::Error>> {
+    begin: usize,
+    end: usize,
+) -> Result<(usize, usize), Box<dyn std::error::Error>> {
     // This is used for highlighting which lines contain text relevant to the token, so even if a token does not extend all the way to the end of the line, the end_line figure will be the following line number (since the range is exclusive, not inclusive).
     let start_line = original_source
         .chars()
@@ -241,5 +189,86 @@ fn get_line_numbers<'s>(
         without_trailing_newline.filter(|x| *x == '\n').count() + 2
     };
 
-    Ok((u32::try_from(start_line)?, u32::try_from(end_line)?))
+    Ok((usize::try_from(start_line)?, usize::try_from(end_line)?))
+}
+
+struct StandardProperties {
+    begin: Option<usize>,
+    #[allow(dead_code)]
+    post_affiliated: Option<usize>,
+    #[allow(dead_code)]
+    contents_begin: Option<usize>,
+    #[allow(dead_code)]
+    contents_end: Option<usize>,
+    end: Option<usize>,
+    #[allow(dead_code)]
+    post_blank: Option<usize>,
+}
+
+fn get_standard_properties<'s>(
+    emacs: &'s Token<'s>,
+) -> Result<StandardProperties, Box<dyn std::error::Error>> {
+    let children = emacs.as_list()?;
+    let attributes_child = children
+        .iter()
+        .nth(1)
+        .ok_or("Should have an attributes child.")?;
+    let attributes_map = attributes_child.as_map()?;
+    let standard_properties = attributes_map.get(":standard-properties");
+    Ok(if standard_properties.is_some() {
+        let mut std_props = standard_properties
+            .expect("if statement proves its Some")
+            .as_vector()?
+            .into_iter();
+        let begin = maybe_token_to_usize(std_props.next())?;
+        let post_affiliated = maybe_token_to_usize(std_props.next())?;
+        let contents_begin = maybe_token_to_usize(std_props.next())?;
+        let contents_end = maybe_token_to_usize(std_props.next())?;
+        let end = maybe_token_to_usize(std_props.next())?;
+        let post_blank = maybe_token_to_usize(std_props.next())?;
+        StandardProperties {
+            begin,
+            post_affiliated,
+            contents_begin,
+            contents_end,
+            end,
+            post_blank,
+        }
+    } else {
+        let begin = maybe_token_to_usize(attributes_map.get(":begin").map(|token| *token))?;
+        let end = maybe_token_to_usize(attributes_map.get(":end").map(|token| *token))?;
+        let contents_begin =
+            maybe_token_to_usize(attributes_map.get(":contents-begin").map(|token| *token))?;
+        let contents_end =
+            maybe_token_to_usize(attributes_map.get(":contents-end").map(|token| *token))?;
+        let post_blank =
+            maybe_token_to_usize(attributes_map.get(":post-blank").map(|token| *token))?;
+        let post_affiliated =
+            maybe_token_to_usize(attributes_map.get(":post-affiliated").map(|token| *token))?;
+        StandardProperties {
+            begin,
+            post_affiliated,
+            contents_begin,
+            contents_end,
+            end,
+            post_blank,
+        }
+    })
+}
+
+fn maybe_token_to_usize(
+    token: Option<&Token<'_>>,
+) -> Result<Option<usize>, Box<dyn std::error::Error>> {
+    Ok(token
+        .map(|token| token.as_atom())
+        .map_or(Ok(None), |r| r.map(Some))?
+        .map(|val| {
+            if val == "nil" {
+                None
+            } else {
+                Some(val.parse::<usize>())
+            }
+        })
+        .flatten() // Outer option is whether or not the param exists, inner option is whether or not it is nil
+        .map_or(Ok(None), |r| r.map(Some))?)
 }
