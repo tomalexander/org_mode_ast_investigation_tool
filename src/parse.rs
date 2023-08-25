@@ -51,3 +51,40 @@ where
     }
     output
 }
+
+pub async fn get_emacs_version() -> Result<String, Box<dyn std::error::Error>> {
+    let elisp_script = r#"(progn
+     (message "%s" (version))
+)"#;
+    let mut cmd = Command::new("emacs");
+    let proc = cmd
+        .arg("-q")
+        .arg("--no-site-file")
+        .arg("--no-splash")
+        .arg("--batch")
+        .arg("--eval")
+        .arg(elisp_script);
+
+    let out = proc.output().await?;
+    out.status.exit_ok()?;
+    Ok(String::from_utf8(out.stderr)?)
+}
+
+pub async fn get_org_mode_version() -> Result<String, Box<dyn std::error::Error>> {
+    let elisp_script = r#"(progn
+     (org-mode)
+     (message "%s" (org-version nil t nil))
+)"#;
+    let mut cmd = Command::new("emacs");
+    let proc = cmd
+        .arg("-q")
+        .arg("--no-site-file")
+        .arg("--no-splash")
+        .arg("--batch")
+        .arg("--eval")
+        .arg(elisp_script);
+
+    let out = proc.output().await?;
+    out.status.exit_ok()?;
+    Ok(String::from_utf8(out.stderr)?)
+}

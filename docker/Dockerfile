@@ -30,14 +30,14 @@ RUN apk add --no-cache musl-dev
 RUN mkdir /root/org-investigation
 WORKDIR /root/org-investigation
 COPY . .
-RUN CARGO_TARGET_DIR=/target cargo build --release
+RUN CARGO_TARGET_DIR=/target cargo build --profile release-lto
 
 
 FROM alpine:3.17 AS run
 RUN apk add --no-cache ncurses gnutls
 COPY --from=build-emacs /root/dist/ /
 COPY --from=build-org-mode /root/dist/ /
-COPY --from=build-org-investigation /target/release/org_ownership_investigation /usr/bin/
+COPY --from=build-org-investigation /target/release-lto/org_ownership_investigation /usr/bin/
 COPY static /opt/org-investigation/static
 WORKDIR /opt/org-investigation
 CMD ["/usr/bin/org_ownership_investigation"]
