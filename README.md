@@ -19,6 +19,8 @@ docker run --init --rm --publish 3000:3000/tcp org-investigation
 ```
 
 This launches a server listening on port 3000, so pop open your browser to http://127.0.0.1:3000/ to access the web interface.
+
+(alternatively, you can run the `scripts/launch_docker.bash` script which performs these two steps.)
 ### No docker
 You will need a fully functional rust setup with nightly installed (due to the use of exit_status_error). Then from the root of this repo you can launch the server by running:
 
