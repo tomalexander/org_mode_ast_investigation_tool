@@ -34,6 +34,7 @@ RUN CARGO_TARGET_DIR=/target cargo build --profile release-lto
 
 
 FROM alpine:3.17 AS run
+ENV LANG=en_US.UTF-8
 RUN apk add --no-cache ncurses gnutls
 COPY --from=build-emacs /root/dist/ /
 COPY --from=build-org-mode /root/dist/ /
