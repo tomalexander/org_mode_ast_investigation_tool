@@ -14,7 +14,7 @@ RUN make DESTDIR="/root/dist" install
 
 
 FROM build AS build-org-mode
-ARG ORG_VERSION=7bdec435ff5d86220d13c431e799c5ed44a57da1
+ARG ORG_VERSION=163bafb43dcc2bc94a2c7ccaa77d3d1dd488f1af
 COPY --from=build-emacs /root/dist/ /
 RUN mkdir /root/dist
 # Savannah does not allow fetching specific revisions, so we're going to have to put unnecessary load on their server by cloning main and then checking out the revision we want.
