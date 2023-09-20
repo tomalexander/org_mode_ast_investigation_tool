@@ -1,5 +1,5 @@
 FROM alpine:3.17 AS build
-RUN apk add --no-cache build-base musl-dev git autoconf make texinfo gnutls-dev ncurses-dev gawk
+RUN apk add --no-cache build-base musl-dev git autoconf make texinfo gnutls-dev ncurses-dev gawk libgccjit-dev
 
 
 FROM build AS build-emacs
@@ -8,7 +8,7 @@ RUN git clone --depth 1 --branch $EMACS_VERSION https://git.savannah.gnu.org/git
 WORKDIR /root/emacs
 RUN mkdir /root/dist
 RUN ./autogen.sh
-RUN ./configure --prefix /usr --without-x --without-sound
+RUN ./configure --prefix /usr --without-x --without-sound --with-native-compilation=aot
 RUN make
 RUN make DESTDIR="/root/dist" install
 
@@ -35,7 +35,7 @@ RUN CARGO_TARGET_DIR=/target cargo build --profile release-lto
 
 FROM alpine:3.17 AS run
 ENV LANG=en_US.UTF-8
-RUN apk add --no-cache ncurses gnutls
+RUN apk add --no-cache ncurses gnutls libgccjit
 COPY --from=build-emacs /root/dist/ /
 COPY --from=build-org-mode /root/dist/ /
 COPY --from=build-org-investigation /target/release-lto/org_ownership_investigation /usr/bin/
